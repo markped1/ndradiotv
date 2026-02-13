@@ -203,6 +203,13 @@ const AdminView: React.FC<AdminViewProps> = ({
         >
           Logs
         </button>
+        <button
+          onClick={onToggleRadio}
+          className={`px-3 py-2 text-[8px] font-black uppercase rounded shadow-sm transition-all ${isRadioPlaying ? 'bg-red-500 text-white animate-pulse' : 'bg-[#008751] text-white hover:bg-green-700'}`}
+          title={isRadioPlaying ? 'Stop Broadcast' : 'Start Broadcast'}
+        >
+          <i className={`fas ${isRadioPlaying ? 'fa-stop' : 'fa-play'}`}></i>
+        </button>
       </nav>
 
       {/* Tab Content */}
