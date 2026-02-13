@@ -40,7 +40,10 @@ const App: React.FC = () => {
   const [audioStatus, setAudioStatus] = useState<string>('Ready');
   const [isTvActive, setIsTvActive] = useState(false); // TV Active State
   const [lastError, setLastError] = useState<string>('');
-  const [isDucking, setIsDucking] = useState(false);
+  const [isDuckingNDR, setIsDuckingNDR] = useState(false);
+  const [isDuckingThompson, setIsDuckingThompson] = useState(false);
+  const [isDuckingFavour, setIsDuckingFavour] = useState(false);
+  const isDucking = isDuckingNDR || isDuckingThompson || isDuckingFavour;
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
   const [newsTriggerCount, setNewsTriggerCount] = useState(0);
   const [manualNewsTriggerCount, setManualNewsTriggerCount] = useState(0);
@@ -296,7 +299,7 @@ const App: React.FC = () => {
 
   const handleManualBroadcast = useCallback(async (item: NewsItem) => {
     setBroadcastStatus(`🎙️ Manual: ${NEWSCASTER_NAME} reading archived story...`);
-    setIsDucking(true);
+    setIsDuckingNDR(true);
 
     try {
       const audio = await getNewsAudio(item.content);
@@ -312,7 +315,7 @@ const App: React.FC = () => {
     } catch (e) {
       console.error("Manual broadcast failed", e);
     } finally {
-      setIsDucking(false);
+      setIsDuckingNDR(false);
       setBroadcastStatus('');
     }
   }, []);
@@ -411,7 +414,7 @@ const App: React.FC = () => {
         manualTrigger={newsTriggerCount}
         stopSignal={stopTriggerCount}
         mediaFiles={allMedia}
-        onDuckingChange={setIsDucking}
+        onDuckingChange={setIsDuckingNDR}
         isAllowedToPlay={role === UserRole.ADMIN ? isPlaying : listenerHasPlayed}
       />
 
@@ -427,7 +430,7 @@ const App: React.FC = () => {
         }}
         onLogAdd={handleLogAdd}
         stopSignal={stopTriggerCount}
-        onDuckingChange={setIsDucking}
+        onDuckingChange={setIsDuckingThompson}
         isAllowedToPlay={role === UserRole.ADMIN ? isPlaying : listenerHasPlayed}
         mediaFiles={allMedia}
       />
@@ -446,7 +449,7 @@ const App: React.FC = () => {
         onLogAdd={handleLogAdd}
         currentNewsFeed={news}
         stopSignal={stopTriggerCount}
-        onDuckingChange={setIsDucking}
+        onDuckingChange={setIsDuckingFavour}
         isAllowedToPlay={role === UserRole.ADMIN ? isPlaying : listenerHasPlayed}
         mediaFiles={allMedia}
       />
