@@ -230,27 +230,33 @@ const App: React.FC = () => {
     };
   }, [role, activeTrackId, fetchData]);
 
-  // --- ADMIN MASTER SYNC ---
+  // --- ADMIN MASTER SYNC & PULSE ---
   useEffect(() => {
     if (role === UserRole.ADMIN && supabase) {
-      // CRITICAL: Handle URLs, Clouds, and Jingles
-      const isUrl = activeTrackUrl && (activeTrackUrl.startsWith('http') || activeTrackUrl.startsWith('https'));
-      const isCloudUrl = isUrl && !activeTrackUrl?.startsWith('blob:');
-      const isJingle = activeTrackId === 'jingle' || (!isUrl && activeTrackUrl && activeTrackUrl.toLowerCase().includes('.mp3'));
+      const syncStation = () => {
+        const isUrl = activeTrackUrl && (activeTrackUrl.startsWith('http') || activeTrackUrl.startsWith('https'));
+        const isCloudUrl = isUrl && !activeTrackUrl?.startsWith('blob:');
+        const isJingle = activeTrackId === 'jingle' || (!isUrl && activeTrackUrl && activeTrackUrl.toLowerCase().includes('.mp3'));
 
-      console.log("📤 [App] Admin Syncing State. URL Type:", isCloudUrl ? "Cloud" : isJingle ? "Jingle" : "None");
+        console.log("📤 [App] Admin Pulsing State...", isCloudUrl ? "Cloud" : isJingle ? "Jingle" : "None");
 
-      dbService.updateStationState({
-        is_playing: isPlaying,
-        is_tv_active: isTvActive,
-        current_track_id: activeTrackId,
-        current_track_name: currentTrackName,
-        current_track_url: isCloudUrl ? activeTrackUrl : (isJingle ? activeTrackUrl : null),
-        current_video_id: activeVideoId,
-        timestamp: Date.now()
-      }).catch(err => {
-        console.error("❌ Station Sync error", err);
-      });
+        dbService.updateStationState({
+          is_playing: isPlaying,
+          is_tv_active: isTvActive,
+          current_track_id: activeTrackId,
+          current_track_name: currentTrackName,
+          current_track_url: isCloudUrl ? activeTrackUrl : (isJingle ? activeTrackUrl : null),
+          current_video_id: activeVideoId,
+          timestamp: Date.now()
+        }).catch(err => console.error("❌ Station Sync error", err));
+      };
+
+      // Initial sync on change
+      syncStation();
+
+      // HEARTBEAT: Pulse every 15 seconds to keep listeners and Supabase channel alive
+      const pulseInterval = setInterval(syncStation, 15000);
+      return () => clearInterval(pulseInterval);
     }
   }, [isPlaying, isTvActive, activeTrackId, currentTrackName, role, activeTrackUrl, activeVideoId]);
 

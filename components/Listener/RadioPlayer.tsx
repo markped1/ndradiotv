@@ -30,13 +30,14 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const isStreamRef = useRef<boolean>(false);
+  const wakeLockRef = useRef<any>(null);
+  const lastActivityRef = useRef<number>(Date.now());
 
   const onTrackEndedRef = useRef(onTrackEnded);
   useEffect(() => {
@@ -192,13 +193,31 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
     setupSource(activeTrackUrl);
 
+    // --- WAKE LOCK (ADMIN ONLY) ---
+    const requestWakeLock = async () => {
+      if (isAdmin && 'wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          console.log("🛡️ [RadioPlayer] WakeLock Active - Screen will stay ON.");
+        } catch (err) {
+          console.warn("⚠️ WakeLock failed:", err);
+        }
+      }
+    };
+
+    if (forcePlaying || isPlaying) requestWakeLock();
+
     return () => {
       audio.pause();
       audio.src = "";
       audio.removeAttribute('src');
       audioRef.current = null;
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      }
     };
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -329,24 +348,34 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     }
   };
 
-  // Scheduler Check Loop
+  // Scheduler & Watchdog Check Loop
   useEffect(() => {
-    if (!isPlaying || isDucking) return;
+    if (!isPlaying) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
-      const timeSinceLast = now - lastJingleTimeRef.current;
 
-      // Trigger every 45-75 seconds (randomized)
-      const threshold = 45000 + (Math.random() * 30000);
-
-      if (timeSinceLast > threshold && !isJinglePlayingRef.current && !isDucking) {
+      // 1. Jingle Scheduler (approx every 60s)
+      const timeSinceLastJingle = now - lastJingleTimeRef.current;
+      const jingleThreshold = 45000 + (Math.random() * 30000);
+      if (timeSinceLastJingle > jingleThreshold && !isJinglePlayingRef.current && !isDucking) {
         playJingleOverlay();
       }
-    }, 5000); // Check every 5s
+
+      // 2. SILENCE WATCHDOG (Listener Only)
+      // If we SHOULD be playing but audio element is stalled or dead silent
+      if (!isAdmin && forcePlaying && audioRef.current) {
+        const isActuallyPlaying = !audioRef.current.paused && audioRef.current.readyState >= 2;
+        if (!isActuallyPlaying || audioRef.current.muted) {
+          console.warn("🐕 [Watchdog] Silence detected! Force-reloading sync...");
+          audioRef.current.load();
+          audioRef.current.play().catch(e => console.error("Watchdog recovery failed:", e));
+        }
+      }
+    }, 10000); // Check every 10s
 
     return () => clearInterval(interval);
-  }, [isPlaying, isDucking, volume]);
+  }, [isPlaying, isDucking, volume, isAdmin, forcePlaying]);
 
   useEffect(() => {
     if (audioRef.current) {
