@@ -196,6 +196,10 @@ const App: React.FC = () => {
         current_track_url: isValidUrl ? activeTrackUrl : null,
         current_video_id: activeVideoId,
         timestamp: Date.now()
+      }).catch(err => {
+        console.error("❌ Global Sync Failed:", err);
+        setLastError("Global sync failed. Please run schema_update.sql in Supabase!");
+        setTimeout(() => setLastError(null), 10000);
       });
     }
   }, [isPlaying, isTvActive, activeTrackId, currentTrackName, role, activeTrackUrl, activeVideoId]);

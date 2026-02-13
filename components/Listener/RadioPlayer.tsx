@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { DEFAULT_STREAM_URL, JINGLE_1, JINGLE_2 } from '../../constants';
+const SILENT_FALLBACK_URL = "https://stream.zeno.fm/u9mphfk604zuv"; // Silent fallback if cloud fails
 import { getJingleAudio } from '../../services/aiDjService';
 import Logo from '../Shared/Logo';
 
@@ -223,6 +224,13 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
           audioRef.current.play().catch(err => {
             console.warn("Autoplay blocked or stream error:", err);
+            // If it was a track failing, try falling back to silent stream
+            if (!isStreamRef.current && SILENT_FALLBACK_URL) {
+              console.log("🔄 Playback failed, falling back to silent stream...");
+              audioRef.current!.src = SILENT_FALLBACK_URL;
+              audioRef.current!.load();
+              audioRef.current!.play().catch(e => console.error("Final fallback failed:", e));
+            }
             setStatus('IDLE');
           });
         }
