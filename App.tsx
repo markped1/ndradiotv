@@ -34,7 +34,7 @@ const App: React.FC = () => {
   const [listenerHasPlayed, setListenerHasPlayed] = useState(false); // Listener play button state
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [activeTrackUrl, setActiveTrackUrl] = useState<string | null>(null);
-  const [currentTrackName, setCurrentTrackName] = useState<string>('Live Stream');
+  const [currentTrackName, setCurrentTrackName] = useState<string>('Station Standby');
   const [isShuffle, setIsShuffle] = useState(true);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [audioStatus, setAudioStatus] = useState<string>('Ready');
@@ -144,9 +144,15 @@ const App: React.FC = () => {
         if (role === UserRole.LISTENER) {
           console.log("📻 [Supabase] Remote State Update:", newState);
           setIsPlaying(newState.is_playing);
+          setIsTvActive(newState.is_tv_active);
+
+          if (newState.current_video_id) {
+            setActiveVideoId(newState.current_video_id);
+          }
+
           if (newState.current_track_id && newState.current_track_id !== activeTrackId) {
             setActiveTrackId(newState.current_track_id);
-            setActiveTrackUrl(newState.current_track_url); // We'll need cloud URLs in Phase 2
+            setActiveTrackUrl(newState.current_track_url);
             setCurrentTrackName(newState.current_track_name);
           }
         }
@@ -179,15 +185,20 @@ const App: React.FC = () => {
   // Update cloud state when Admin changes something
   useEffect(() => {
     if (role === UserRole.ADMIN && supabase) {
+      // CRITICAL: Only sync if it's a real network URL, not a local blob
+      const isValidUrl = activeTrackUrl && (activeTrackUrl.startsWith('http://') || activeTrackUrl.startsWith('https://'));
+
       dbService.updateStationState({
         is_playing: isPlaying,
+        is_tv_active: isTvActive,
         current_track_id: activeTrackId,
         current_track_name: currentTrackName,
-        current_track_url: activeTrackUrl,
+        current_track_url: isValidUrl ? activeTrackUrl : null,
+        current_video_id: activeVideoId,
         timestamp: Date.now()
       });
     }
-  }, [isPlaying, activeTrackId, currentTrackName, role]);
+  }, [isPlaying, isTvActive, activeTrackId, currentTrackName, role, activeTrackUrl, activeVideoId]);
 
   const handleLogAdd = useCallback((action: string) => {
     // We'll keep logs local for now, but AdminMessages should be cloud
@@ -438,6 +449,7 @@ const App: React.FC = () => {
           <h1 className="text-base font-black italic uppercase leading-none text-green-950">{APP_NAME}</h1>
         </div>
         <div className="flex items-center space-x-2">
+          {!supabase && <span className="text-[7px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-black uppercase animate-pulse">Cloud Offline</span>}
           {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Live Broadcast</span>}
           <button
             onClick={role === UserRole.ADMIN ? () => { setRole(UserRole.LISTENER); setListenerHasPlayed(false); } : () => setShowAuth(true)}
@@ -445,7 +457,7 @@ const App: React.FC = () => {
           >
             {role === UserRole.ADMIN ? 'Exit Admin' : 'Admin Login'}
           </button>
-          <div className={`w-3 h-3 rounded-full ${aiAudioContextRef.current?.state === 'running' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} title="Audio Engine Status"></div>
+          <div className={`w-3 h-3 rounded-full ${supabase ? 'bg-green-500' : 'bg-gray-400'}`} title={supabase ? "Cloud Connected" : "Cloud Disconnected"}></div>
           {audioStatus !== 'Ready' && <span className="text-[10px] text-green-700 font-bold ml-1">{audioStatus}</span>}
           {lastError && <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded ml-2 font-black uppercase animate-bounce">{lastError}</span>}
         </div>
@@ -519,6 +531,7 @@ const App: React.FC = () => {
             onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => {
               console.log('▶️ Play Track Clicked:', t.name, t.url);
               setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsPlaying(true);
+              setIsTvActive(false);
             }}
             isRadioPlaying={isPlaying} onToggleRadio={() => setIsPlaying(!isPlaying)}
             currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}

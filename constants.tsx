@@ -42,7 +42,9 @@ export const BREAKING_NEWS_PRIORITY_THRESHOLD = 90;
 export const NEWS_BGM_VOLUME = 0.25; // Background music at 25% of voice volume
 
 // Stream Settings
-export const DEFAULT_STREAM_URL = "https://stream.zeno.fm/f36yzh6t938uv";
+// We prioritize Supabase Storage for all music and video.
+// Setting DEFAULT_STREAM_URL to null effectively puts the station in "Standby" if no cloud track is active.
+export const DEFAULT_STREAM_URL = "";
 
 // Admin Settings
 export const ADMIN_PASSWORD_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";

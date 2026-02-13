@@ -152,23 +152,32 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('loadstart', handleLoadStart);
 
-    const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
-    isStreamRef.current = !targetSrc.startsWith('blob:') && !targetSrc.startsWith('data:');
+    const setupSource = (src: string | null | undefined) => {
+      const targetSrc = src || DEFAULT_STREAM_URL;
 
-    // CRITICAL FIX: Don't set crossOrigin for live streams
-    // Many streaming services don't send proper CORS headers
-    if (targetSrc.startsWith('blob:') || targetSrc.startsWith('data:')) {
-      audio.crossOrigin = null;
-    } else {
-      // For online streams, don't set crossOrigin unless needed
-      // This allows the stream to play without CORS restrictions
-      audio.removeAttribute('crossorigin');
-    }
+      // Validation: If no source provided and no default stream, put in Standby
+      if (!targetSrc || targetSrc === '' || targetSrc === window.location.href) {
+        console.log('📡 [RadioPlayer] Station in Standby Mode - No active source.');
+        audio.src = "";
+        setStatus('IDLE');
+        return;
+      }
 
-    // CRITICAL: Always set src immediately to avoid "no supported sources" error
-    audio.src = targetSrc;
-    audio.preload = 'metadata'; // Changed from 'none' to ensure source is validated
-    audio.load(); // Explicitly load the source
+      audio.src = targetSrc;
+      isStreamRef.current = !audio.src.startsWith('blob:') && !audio.src.startsWith('data:');
+
+      // CRITICAL FIX: Don't set crossOrigin for live streams
+      if (audio.src.startsWith('blob:') || audio.src.startsWith('data:')) {
+        audio.crossOrigin = null;
+      } else {
+        audio.removeAttribute('crossorigin');
+      }
+
+      audio.preload = 'metadata';
+      audio.load();
+    };
+
+    setupSource(activeTrackUrl);
 
     return () => {
       audio.pause();
@@ -181,6 +190,16 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   useEffect(() => {
     if (audioRef.current) {
       const targetSrc = activeTrackUrl || DEFAULT_STREAM_URL;
+
+      // Validation: If no source provided and no default stream, put in Standby
+      if (!targetSrc || targetSrc === '' || targetSrc === window.location.href) {
+        console.log('📡 [RadioPlayer] Switching to Standby Mode.');
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        setStatus('IDLE');
+        return;
+      }
+
       console.log('📻 RadioPlayer received URL:', targetSrc);
       if (audioRef.current.src !== targetSrc) {
         const isLocal = targetSrc.startsWith('blob:') || targetSrc.startsWith('data:');

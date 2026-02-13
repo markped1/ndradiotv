@@ -2,22 +2,51 @@
 import { GoogleGenAI } from "@google/genai";
 import fetch from 'node-fetch'; // assuming node environment for test
 
-// Keys
-const GEMINI_KEY = 'AIzaSyCJraGvrvNyIrAgFgzdTNiMte5lpQ5R6Os';
-const ELEVEN_KEY = 'sk_cf24c9b9c8380b131d489a67e6d5baefd7bd7184984cce35';
+import fs from 'fs';
+import path from 'path';
+
+// Manual .env parsing
+try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        const envConfig = fs.readFileSync(envPath, 'utf8');
+        envConfig.split(/\r?\n/).forEach(line => {
+            const match = line.match(/^([^=]+)=(.*)$/);
+            if (match) {
+                const key = match[1].trim();
+                const value = match[2].trim().replace(/^["']|["']$/g, '');
+                process.env[key] = value;
+            }
+        });
+    }
+} catch (e) {
+    console.error("Error loading .env:", e);
+}
+
+// Keys from Environment
+const GEMINI_KEY = process.env.VITE_GEMINI_API_KEY;
+const ELEVEN_KEY = process.env.VITE_ELEVENLABS_API_KEY;
 
 async function testChain() {
+    if (!GEMINI_KEY || !ELEVEN_KEY) {
+        console.error('❌ Keys missing in .env');
+        return;
+    }
     console.log('🚀 Starting Full Chain Verification...');
+    console.log(`🔑 Gemini Key: ${GEMINI_KEY.substring(0, 5)}...`);
+    console.log(`🔑 Eleven Key: ${ELEVEN_KEY.substring(0, 5)}...`);
 
-    // 1. Fetch News (Mock logic but real API)
+    // 1. Fetch News
     console.log('1️⃣ fetching news from Gemini (gemini-2.0-flash)...');
     const genAI = new GoogleGenAI({ apiKey: GEMINI_KEY });
     let newsContent = "";
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent("Write 3 short fake news headlines about Nigeria.");
-        newsContent = result.response.text();
+        const response = await genAI.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: [{ role: 'user', parts: [{ text: "Write 3 short fake news headlines about Nigeria." }] }]
+        });
+        newsContent = response.text || "";
         console.log('✅ Gemini Response:', newsContent.substring(0, 50) + '...');
     } catch (e) {
         console.error('❌ Gemini Failed:', e);

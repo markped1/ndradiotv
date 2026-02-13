@@ -648,6 +648,19 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => {
+                        if (file.type === 'audio') {
+                          onPlayTrack(file);
+                        } else {
+                          onPlayVideo?.(file);
+                        }
+                      }}
+                      className="w-6 h-6 rounded-full bg-green-50 text-green-600 hover:bg-green-100 flex items-center justify-center transition-colors"
+                      title="Play Globally"
+                    >
+                      <i className="fas fa-play text-[8px]"></i>
+                    </button>
                     {onDeleteMedia && (
                       <button
                         onClick={async () => {
@@ -660,7 +673,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                           }
                         }}
                         title="Delete from Cloud"
-                        className="w-6 h-6 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center"
+                        className="w-6 h-6 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors"
                       >
                         <i className="fas fa-trash text-[8px]"></i>
                       </button>

@@ -3,9 +3,11 @@ import { supabase } from './supabaseClient';
 
 export interface StationState {
   is_playing: boolean;
+  is_tv_active: boolean;
   current_track_id: string | null;
   current_track_name: string;
   current_track_url: string | null;
+  current_video_id: string | null;
   timestamp: number;
   last_updated: number;
 }
