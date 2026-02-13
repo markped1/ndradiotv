@@ -645,21 +645,27 @@ const AdminView: React.FC<AdminViewProps> = ({
               <button
                 onClick={async () => {
                   console.log('🔌 [Diagnostic] Testing Cloud Connection...');
+                  const sb = (window as any).supabase;
+
+                  if (!sb) {
+                    const msg = '❌ Error: Supabase client not initialized. Check your Vercel Environment Variables!';
+                    setInternalStatus(msg);
+                    alert(msg);
+                    return;
+                  }
+
                   setInternalStatus('Testing Storage Connection...');
                   try {
-                    const sb = (window as any).supabase;
-                    if (!sb) {
-                      setInternalStatus('❌ Error: Supabase client not initialized');
-                      return;
-                    }
                     const { data, error } = await sb.storage.listBuckets();
                     if (error) throw error;
                     const buckets = data.map((b: any) => b.name).join(', ');
-                    setInternalStatus(`✅ Buckets found: ${buckets}`);
-                    console.log('✅ [Diagnostic] Success:', buckets);
+                    const successMsg = `✅ Buckets found: ${buckets}`;
+                    setInternalStatus(successMsg);
+                    alert(successMsg);
                   } catch (e: any) {
-                    console.error('❌ [Diagnostic] Failure:', e);
-                    setInternalStatus(`❌ Connection Error: ${e.message}`);
+                    const errMsg = `❌ Connection Error: ${e.message}`;
+                    setInternalStatus(errMsg);
+                    alert(errMsg);
                   }
                   setTimeout(() => setInternalStatus(''), 8000);
                 }}
